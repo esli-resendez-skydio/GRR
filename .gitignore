@@ -1,0 +1,14 @@
+# Ignore authkey for gdrive push
+AuthKey/
+# Ignore Outputs
+ChartsGRR/
+ChartsLimitsCalculator/
+Output/*
+!Output/.gitkeep
+
+# Ignore raw data files
+GRRRawData/*
+!GRRRawData/.gitkeep
+
+# Ignore gdrive control
+gdrive.py
