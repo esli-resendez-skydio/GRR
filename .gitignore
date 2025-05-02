@@ -6,6 +6,8 @@ ChartsLimitsCalculator/
 Output/*
 !Output/.gitkeep
 
+Obsolete/
+
 # Ignore raw data files
 GRRRawData/*
 !GRRRawData/.gitkeep
