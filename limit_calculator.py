@@ -12,6 +12,16 @@ from datetime import datetime
 OUTPUT_FILE_PATH = "GRR/Output/limit_calc_outputfile.csv"
 METRICS_FILE = "GRR/GRRRawData/X10_Gen2_Cell_TestLimits_2025_04_24.csv" # Declare here the CSV will all the metrics
 
+# Update these values based on your own estimation of a proper tolerance
+TOL_MIN = 1
+TOL_MAX = 20
+MIN_ELEMENTS = 40
+# Update for tour target CPK
+TARGET_CPK = 1.0
+# Update this to somewhere between 20 and 40 depending on how granular your data is.Less bins will have less resolution of data
+BINS = 20
+
+
 def read_file(file_to_read:str) -> pd.DataFrame:
     df = pd.read_csv(file_to_read)    
     return df
@@ -24,7 +34,7 @@ def best_limits(test_key_df:pd.DataFrame, mu:float, key_metric:str, cpk_target:f
     #mu = np.mean(data_vals) mu comes from the PDF peak but it also can come from the mean of the dataset
     sigma = np.std(data_vals)
     
-    for width in np.linspace(3, 20, 100):
+    for width in np.linspace(TOL_MIN, TOL_MAX, (TOL_MAX*2)):
         lsl = mu - width / 2
         usl = mu + width / 2
         cpk = min((usl - mu) / (3 * sigma), (mu - lsl) / (3 * sigma))
@@ -93,7 +103,7 @@ def main(save_gsheet:bool):
             # Create secondary y-axis
             ax2 = ax.twinx()
             # Plot histogram
-            counts, bins, patches = ax.hist(df_test['value_double'], bins=30, alpha=0.7, density=False, label=f'Limit Analysis {test_name}')
+            counts, bins, patches = ax.hist(df_test['value_double'], bins=BINS, alpha=0.7, density=False, label=f'Limit Analysis {test_name}')
             # Fit a normal distribution to the data
             mu, std = norm.fit(df_test['value_double'])
             # Plot the PDF
@@ -104,12 +114,14 @@ def main(save_gsheet:bool):
             # Vertical line at PDF peak
             max_pdf_x = x[np.argmax(p)]
             ax2.axvline(max_pdf_x, color='r', linestyle='--', linewidth=2, label='PDF Peak')
-            low_lim, high_lim = best_limits(test_key_df=df_test, mu=max_pdf_x, key_metric=test_name, cpk_target=1.3, file_output=out_file_path)
-            ax2.axvline(low_lim, color='b', linestyle='--', linewidth=2, label='Low Limit')
-            ax2.axvline(high_lim, color='b', linestyle='--', linewidth=2, label='High Limit')
+            low_lim, high_lim = best_limits(test_key_df=df_test, mu=max_pdf_x, key_metric=test_name, cpk_target=TARGET_CPK, file_output=out_file_path)
+            ax2.axvline(low_lim, color='b', linestyle='--', linewidth=2, label='Estimated LL')
+            ax2.axvline(high_lim, color='b', linestyle='--', linewidth=2, label='Estimated HL')
             ax2.legend()
-
-            plt.title(f'{test_name} Distribution and Estimated Limits')
+            ax.set_xlabel('Metric Value')
+            ax.set_ylabel('Binarized Metric Count')
+            ax2.set_ylabel('Distribution Density')
+            plt.title(f'Metric {test_name} Distribution and Estimated Limits')
             plt.savefig(f'{output_dir}charts/{test_name}_{today_str}_limits.png')
             plt.close(fig)
             # Save the test key results to GDrive
